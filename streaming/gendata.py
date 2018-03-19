@@ -24,11 +24,9 @@ def server_side():
         time.sleep(2)
     return 0
 
-# 1 - return valid address, 0 otherwise
-def parse_address_section(indata):
+def safe_parse(jsdata):
     ret = 0
-    jsdata = json.loads(indata)
-    if jsdata.has_key('events'):
+    try:
         eventdata = json.loads(jsdata['events'])
         print eventdata
         print("the event data list length=%d" %(len(eventdata)))
@@ -37,6 +35,16 @@ def parse_address_section(indata):
                 print("the address:%s" %(it['segmentation']['address']))
                 ret = 1
                 break;
+    except:
+        print("got exception, ignore it-%s" %(jsdata))
+    return ret
+
+# 1 - return valid address, 0 otherwise
+def parse_address_section(indata):
+    ret = 0
+    jsdata = json.loads(indata)
+    if jsdata.has_key('events'):
+        ret = safe_parse(jsdata)
     return ret
 
 def dump_data_entry(fn):
@@ -73,11 +81,11 @@ def extract_test_section(fn, newfn):
     with open(fn, 'r') as f:
         for line in f:
             index = index + 1
-            print line
+#            print line
             jsline = re.search(r'\{\".*\"}', line)
             if jsline != None:
-                print "============="
-                print jsline.group(0)
+#print "============="
+#               print jsline.group(0)
                 print ("++++++++++++++")
                 if parse_address_section(jsline.group(0)) == 1:
                         fd.write(line)
@@ -91,7 +99,7 @@ def extract_test_section(fn, newfn):
 class AddressGenerator:
     __src = "default.txt"
     __port = 9091
-    __interval = 5 # 5 seconds timeout by default
+    __interval = 1 # 5 seconds timeout by default
     __city_list = {}
     __device_list = []
 
@@ -143,8 +151,8 @@ class AddressGenerator:
             print("%s - sent %s city, it should be %d now." %(str(cur).strip(),city,  self.__city_list[city]))
             self.dump_all_city()
             time.sleep(self.__interval)
-        else:
-            print("@@@@@@@@@@@@@@ignore case for %s @@@@@@@@@@" %(dev))
+#        else:
+#print("@@@@@@@@@@@@@@ignore case for %s @@@@@@@@@@" %(dev))
         return 0
 
     def where(self, inputline, s):
@@ -163,6 +171,7 @@ class AddressGenerator:
         cur = datetime.datetime.now()
         print("%s - Now, using %s as input source" %(str(cur).strip(), self.__src))
         s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(('127.0.0.1', self.__port))
         s.listen(5)
 
@@ -175,10 +184,10 @@ class AddressGenerator:
 
 ##########################################################################################
 #server_side()
-#extract_test_section('/home/ysx/test.data.countly', './new.txt')
+extract_test_section('/home/ysx/test.data.countly', './new.txt')
 
 #dump_data_entry('./new.txt')
-obj = AddressGenerator('./data.txt')
-obj.launch()
+#obj = AddressGenerator('./data.txt')
+#obj.launch()
 
 
