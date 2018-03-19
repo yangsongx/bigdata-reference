@@ -4,6 +4,7 @@
 
 
 import socket
+import datetime
 import time
 import json
 import re
@@ -91,6 +92,8 @@ class AddressGenerator:
     __src = "default.txt"
     __port = 9091
     __interval = 5 # 5 seconds timeout by default
+    __city_list = {}
+    __device_list = []
 
     def __init__(self, src):
         self.__src = src
@@ -116,10 +119,32 @@ class AddressGenerator:
                     break; # one-shot
         return (province, city)
 
-    def fan_out_data(self, prov, city, s, data):
-        if prov != "" and city != "":
+    def dump_all_city(self):
+        city2 = sorted(self.__city_list.items(),\
+                key = lambda x:x[1], reverse = True)
+        print("---------------------------")
+        for it in city2:
+            print("%s    | %d |" %(it[0], it[1]))
+        print("---------------------------")
+        return 0
+    def fan_out_data(self, prov, city, dev, s, data):
+        if prov != "" and city != "" and dev not in self.__device_list:
+            if self.__city_list.has_key(city):
+                count = self.__city_list[city]
+                count = count + 1
+                self.__city_list[city] = count
+            else:
+                self.__city_list[city] = 1
+
+            self.__device_list.append(dev)
+
             s.send(data)
+            cur = datetime.datetime.now()
+            print("%s - sent %s city, it should be %d now." %(str(cur).strip(),city,  self.__city_list[city]))
+            self.dump_all_city()
             time.sleep(self.__interval)
+        else:
+            print("@@@@@@@@@@@@@@ignore case for %s @@@@@@@@@@" %(dev))
         return 0
 
     def where(self, inputline, s):
@@ -129,11 +154,14 @@ class AddressGenerator:
             eventdata = json.loads(jsdata['events'])
             (prov, city) = self.parse_addr_in_events(eventdata)
             print("%s - %s" %(prov, city))
-            self.fan_out_data(prov, city, s, inputline)
+
+            dev = jsdata["device_id"]
+            self.fan_out_data(prov, city, dev, s, inputline)
         return 0
 
     def launch(self):
-        print("Now, using %s as input source" %(self.__src))
+        cur = datetime.datetime.now()
+        print("%s - Now, using %s as input source" %(str(cur).strip(), self.__src))
         s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         s.bind(('127.0.0.1', self.__port))
         s.listen(5)
