@@ -89,6 +89,8 @@ def extract_test_section(fn, newfn):
 # Wrapper class for auto-test
 class AddressGenerator:
     __src = "default.txt"
+    __port = 9091
+    __interval = 5 # 5 seconds timeout by default
 
     def __init__(self, src):
         self.__src = src
@@ -114,21 +116,33 @@ class AddressGenerator:
                     break; # one-shot
         return (province, city)
 
-    def where(self, inputline):
+    def fan_out_data(self, prov, city, s, data):
+        if prov != "" and city != "":
+            s.send(data)
+            time.sleep(self.__interval)
+        return 0
+
+    def where(self, inputline, s):
         jsline = self.extract_js_section(inputline)
         jsdata = json.loads(jsline)
         if jsdata.has_key('events'):
             eventdata = json.loads(jsdata['events'])
             (prov, city) = self.parse_addr_in_events(eventdata)
             print("%s - %s" %(prov, city))
+            self.fan_out_data(prov, city, s, inputline)
         return 0
 
     def launch(self):
         print("Now, using %s as input source" %(self.__src))
+        s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        s.bind(('127.0.0.1', self.__port))
+        s.listen(5)
+
+        conn,addr = s.accept()
 
         with open(self.__src, "r") as f:
             for line in f:
-                self.where(line)
+                self.where(line, conn)
         return 0
 
 ##########################################################################################
