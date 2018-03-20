@@ -42,9 +42,12 @@ def safe_parse(jsdata):
 # 1 - return valid address, 0 otherwise
 def parse_address_section(indata):
     ret = 0
-    jsdata = json.loads(indata)
-    if jsdata.has_key('events'):
-        ret = safe_parse(jsdata)
+    try:
+        jsdata = json.loads(indata)
+        if jsdata.has_key('events'):
+            ret = safe_parse(jsdata)
+    except:
+        print("GOT EXCEPTION, ignore it-%s" %(indata))
     return ret
 
 def dump_data_entry(fn):
@@ -84,8 +87,8 @@ def extract_test_section(fn, newfn):
 #            print line
             jsline = re.search(r'\{\".*\"}', line)
             if jsline != None:
-#print "============="
-#               print jsline.group(0)
+#                print "============="
+#                print jsline.group(0)
                 print ("++++++++++++++")
                 if parse_address_section(jsline.group(0)) == 1:
                         fd.write(line)
